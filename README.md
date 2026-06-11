@@ -1,6 +1,6 @@
 # Lab Inventory & Refill Alert System — Biotech Lab Automation
 
-> Smart inventory monitoring with automatic LOW/CRITICAL detection and refill alerts.
+> Smart inventory monitoring with automatic LOW/CRITICAL detection, refill alerts, and expiry tracking.
 
 
 
@@ -12,20 +12,21 @@
 
 ## The Problem
 
-Lab managers manually check inventory levels — a tedious, error-prone process. Running out of critical reagents mid-experiment can halt research for days and cost thousands.
+Lab managers manually check inventory levels and expiry dates — a tedious, error-prone process. Running out of critical reagents or using expired chemicals mid-experiment can halt research for days and cost thousands.
 
-Most labs don't know they're out of stock until it's too late.
+Most labs don't know they're out of stock or using expired reagents until it's too late.
 
 ---
 
 ## The Solution
 
-Lab Inventory & Refill Alert automatically monitors all inventory levels in Airtable, detects LOW and CRITICAL stock, and delivers a formatted email alert — so lab managers always know what needs reordering before it runs out.
+Lab Inventory & Refill Alert automatically monitors all inventory levels and expiry dates in Airtable, detects LOW/CRITICAL stock and EXPIRED/EXPIRING SOON reagents, and delivers a complete formatted email alert — so lab managers always stay ahead.
 
 - Zero manual checking — runs on schedule automatically
-- Instant CRITICAL/LOW detection via smart formula
-- Color-coded email with full inventory status
-- Reorder list — only critical items highlighted for action
+- Instant CRITICAL/LOW stock detection via smart formula
+- Expiry tracking — EXPIRED and EXPIRING SOON alerts
+- Color-coded email with full inventory + expiry status
+- Reorder list + Expiry alerts in every email
 
 ---
 
@@ -35,6 +36,7 @@ Lab Inventory & Refill Alert automatically monitors all inventory levels in Airt
 |---|---|---|
 | Checking stock levels | Daily manual check | Zero — fully automatic |
 | Identifying critical items | Visual scanning | Auto-detected instantly |
+| Checking expiry dates | Manual date checking | Auto-detected instantly |
 | Notifying team | Manual email | Auto-delivered to Gmail |
 | Tracking reorder needs | Sticky notes/memory | Clear reorder list in email |
 
@@ -42,9 +44,10 @@ Lab Inventory & Refill Alert automatically monitors all inventory levels in Airt
 
 ## Final Output
 
-- ✅ Inventory Summary — Total / Critical / Low count at top
-- ✅ Color-coded table — RED for CRITICAL, ORANGE for LOW
-- ✅ Immediate Reorder List — only critical items listed
+- ✅ Inventory Summary — Total / Critical / Low / Expired / Expiring Soon
+- ✅ Color-coded table — Stock Status + Expiry Status per item
+- ✅ Immediate Reorder List — critical stock items
+- ✅ Expiry Alerts — expired and expiring soon items with dates
 - ✅ Supplier name per item for quick reordering
 - ✅ Professional HTML Gmail alert
 
@@ -52,12 +55,14 @@ Lab Inventory & Refill Alert automatically monitors all inventory levels in Airt
 
 ## What It Does
 
-Automatically monitors lab inventory levels in Airtable, detects LOW and CRITICAL stock, and sends formatted Gmail alerts for refilling.
+Automatically monitors lab inventory levels and expiry dates in Airtable, detects issues, and sends formatted Gmail alerts.
 
 - **Auto status detection** — GOOD / LOW / CRITICAL calculated automatically
-- **Inventory Summary** — Total / Critical / Low count in every email
+- **Expiry tracking** — VALID / EXPIRING SOON / EXPIRED per item
+- **Inventory Summary** — Total / Critical / Low / Expired / Expiring Soon count
 - **Refill alerts** — Gmail notification when stock is low
 - **Reorder list** — critical items highlighted separately for action
+- **Expiry alerts** — expired and expiring soon items listed with dates
 - **Multi-item monitoring** — tracks all lab items simultaneously
 - **Airtable database** — full inventory management with history
 - **Scheduled automation** — runs automatically, no manual trigger needed
@@ -79,17 +84,15 @@ Automatically monitors lab inventory levels in Airtable, detects LOW and CRITICA
 ```
 Scheduled trigger (n8n)
         ↓
-Airtable fetches all inventory items
+Airtable fetches LOW/CRITICAL + EXPIRED/EXPIRING SOON items
         ↓
-Formula field calculates status per item
-        ↓
-Filter: LOW or CRITICAL items only
+Formula fields calculate Stock Status + Expiry Status
         ↓
 Loop Over Items — process each alert
         ↓
-JavaScript builds HTML email with summary
+JavaScript builds HTML with summary + table + alerts
         ↓
-Gmail sends formatted refill alert
+Gmail sends formatted refill + expiry alert
 ```
 
 ---
@@ -104,16 +107,27 @@ Gmail sends formatted refill alert
 | Unit | Single select (L, mL, g, mg, pcs, box) |
 | Supplier | Single line text |
 | Status | Formula (auto) |
+| Expiry Date | Date |
+| Expiry Status | Formula (auto) |
 | Last Alerted | Date |
 
 ---
 
-## Status Formula
+## Status Formulas
 
+**Stock Status:**
 ```
 IF({Current Stock}=0, "CRITICAL",
   IF({Current Stock}<={Minimum Threshold}*0.5, "CRITICAL",
     IF({Current Stock}<{Minimum Threshold}, "LOW", "GOOD")))
+```
+
+**Expiry Status:**
+```
+IF({Expiry Date}="", "No Date",
+  IF(DATETIME_DIFF({Expiry Date}, TODAY(), 'days') < 0, "EXPIRED",
+    IF(DATETIME_DIFF({Expiry Date}, TODAY(), 'days') <= 30, "EXPIRING SOON",
+      "VALID")))
 ```
 
 ---
@@ -121,9 +135,10 @@ IF({Current Stock}=0, "CRITICAL",
 ## Technical Notes
 
 - Status field: Formula type in Airtable (not Single Select)
-- Loop Over Items node added for correct multi-item processing
-- Airtable filter: `OR({Status}='LOW', {Status}='CRITICAL')`
-- JavaScript node builds HTML with summary + reorder list
+- Expiry Status field: Formula type in Airtable
+- Airtable filter: `OR({Status}='LOW', {Status}='CRITICAL', {Expiry Status}='EXPIRED', {Expiry Status}='EXPIRING SOON')`
+- Loop Over Items node for correct multi-item processing
+- JavaScript node builds HTML with summary + reorder list + expiry alerts
 
 ---
 
